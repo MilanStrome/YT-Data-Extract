@@ -296,3 +296,14 @@ if extract_btn:
                     st.write("**Tags:**", row["Tags"])
                     st.write("**Description:**", row["Description"])
                     st.write("**URL:**", row["URL"])
+
+# ------------------------------------------------------------
+# Footer
+# ------------------------------------------------------------
+st.text("")
+st.text("")
+st.text("")
+st.markdown("---")
+st.markdown("**✶ Built like a weapon, use like a tool. ✶**")
+st.text("- by Ex-Code Warrior Ⓜ")
+st.markdown("---")
