@@ -268,4 +268,19 @@ if extract_btn:
                 st.write("**Upload Date:**", safe_text(row["Upload Date"]))
                 st.write("**Duration (sec):**", safe_text(row["Duration (sec)"]))
                 st.write("**Tags:**", safe_text(row["Tags"]))
+                st.write("**Description:**", safe_text(row["Description"]))
                 st.write("**URL:**", safe_text(row["URL"]))
+
+
+# ------------------------------------------------------------
+# Footer
+# ------------------------------------------------------------
+st.text("")
+st.text("")
+st.text("")
+st.markdown("---")
+st.markdown("**✶ Built like a weapon, use like a tool. ✶**")
+st.text("- by Ex-Code Warrior Ⓜ")
+st.markdown("---")
+
+
