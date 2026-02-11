@@ -37,30 +37,6 @@ body {
     margin-top: -5px;
     margin-bottom: 20px;
 }
-.card {
-    background: #141414 !important;
-    padding: 20px;
-    border-radius: 18px;
-    border: 1px solid #2a2a2a;
-    box-shadow: 0px 0px 25px rgba(0,0,0,0.35);
-    margin-bottom: 15px;
-    color: white !important;
-}
-.value-text {
-    font-size: 15px;
-    color: white !important;
-    font-weight: 600;
-}
-.small-label {
-    font-size: 13px;
-    color: #bbbbbb !important;
-    font-weight: 700;
-}
-hr {
-    border: none;
-    height: 1px;
-    background: #2a2a2a;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -69,7 +45,7 @@ hr {
 # HEADER
 # -----------------------------
 st.markdown("<div class='main-title'>🎬 YouTube Metadata Extractor</div>", unsafe_allow_html=True)
-st.markdown("<div class='sub-title'>No API required · Extract title, description, thumbnail + attempt tags from HTML</div>", unsafe_allow_html=True)
+st.markdown("<div class='sub-title'>Streamlit Cloud Ready · No API · Extract title, description, thumbnail + attempt tags</div>", unsafe_allow_html=True)
 
 
 # -----------------------------
@@ -152,12 +128,18 @@ def extract_tags_from_html(url):
 # EXTRACT VIDEO INFO USING YT-DLP
 # -----------------------------
 def extract_video_info(url):
+    # Streamlit Cloud friendly config (avoids JS runtime issues)
     ydl_opts = {
         "quiet": True,
         "skip_download": True,
-        "extract_flat": False,
         "noplaylist": True,
-        "geo_bypass": True
+        "geo_bypass": True,
+        "nocheckcertificate": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android"]  # best bypass for cloud
+            }
+        }
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -168,7 +150,6 @@ def extract_video_info(url):
 
     tags = info.get("tags", [])
 
-    # If tags not found, attempt HTML extraction
     if not tags:
         tags = extract_tags_from_html(url)
 
@@ -176,7 +157,7 @@ def extract_video_info(url):
         "URL": url,
         "Title": info.get("title") or "Not Available",
         "Description": info.get("description") or "Not Available",
-        "Tags": ", ".join(tags) if tags else "Not Found (Hidden / Blocked)",
+        "Tags": ", ".join(tags) if tags else "Not Found",
         "Channel": info.get("uploader") or info.get("channel") or "Not Available",
         "Upload Date": info.get("upload_date") or "Not Available",
         "Views": info.get("view_count") or "Not Available",
@@ -188,24 +169,19 @@ def extract_video_info(url):
 # -----------------------------
 # INPUT UI
 # -----------------------------
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-
 text_input = st.text_area(
     "📌 Paste multiple YouTube URLs (one per line)",
-    height=180,
+    height=200,
     placeholder="https://www.youtube.com/watch?v=xxxx\nhttps://youtu.be/yyyy"
 )
 
-col1, col2, col3 = st.columns([2, 2, 3])
+col1, col2 = st.columns([2, 2])
 
 with col1:
     extract_btn = st.button("🚀 Extract Metadata", use_container_width=True)
 
 with col2:
     clear_btn = st.button("🧹 Clear", use_container_width=True)
-
-st.markdown("</div>", unsafe_allow_html=True)
-
 
 if clear_btn:
     st.rerun()
@@ -246,21 +222,21 @@ if extract_btn:
 
         df = pd.DataFrame(results)
 
-        st.success("✅ Extraction complete!")
+        # Format date nicely
+        df["Upload Date"] = df["Upload Date"].apply(format_date)
 
+        st.success("✅ Extraction complete!")
 
         # -----------------------------
         # DATA TABLE
         # -----------------------------
         st.markdown("## 📊 Extracted Data")
-        st.dataframe(df, use_container_width=True)
-
+        st.dataframe(df, width="stretch")
 
         # -----------------------------
         # CSV DOWNLOAD
         # -----------------------------
         csv = df.to_csv(index=False).encode("utf-8")
-
         st.download_button(
             "⬇️ Download CSV",
             data=csv,
@@ -268,42 +244,28 @@ if extract_btn:
             mime="text/csv"
         )
 
-
         # -----------------------------
-        # PREVIEW CARDS
+        # PREVIEW CARDS (SAFE VERSION)
         # -----------------------------
         st.markdown("## 🎞️ Preview Cards")
 
         for _, row in df.iterrows():
-            with st.container():
-                st.markdown("---")
+            st.markdown("---")
 
-                col1, col2 = st.columns([1, 3])
+            col1, col2 = st.columns([1, 3])
 
-                with col1:
-                    if pd.notna(row["Thumbnail"]) and row["Thumbnail"] != "":
-                        st.image(row["Thumbnail"], use_container_width=True)
-                    else:
-                        st.write("No Thumbnail")
+            with col1:
+                thumb = safe_text(row["Thumbnail"])
+                if thumb != "Not Available":
+                    st.image(thumb, width="stretch")
+                else:
+                    st.write("No Thumbnail")
 
-                with col2:
-                    st.subheader(str(row["Title"]))
-
-                    st.write("**Channel:**", row["Channel"])
-                    st.write("**Views:**", row["Views"])
-                    st.write("**Upload Date:**", row["Upload Date"])
-                    st.write("**Duration:**", row["Duration (sec)"])
-                    st.write("**Tags:**", row["Tags"])
-                    st.write("**Description:**", row["Description"])
-                    st.write("**URL:**", row["URL"])
-
-# ------------------------------------------------------------
-# Footer
-# ------------------------------------------------------------
-st.text("")
-st.text("")
-st.text("")
-st.markdown("---")
-st.markdown("**✶ Built like a weapon, use like a tool. ✶**")
-st.text("- by Ex-Code Warrior Ⓜ")
-st.markdown("---")
+            with col2:
+                st.subheader(safe_text(row["Title"]))
+                st.write("**Channel:**", safe_text(row["Channel"]))
+                st.write("**Views:**", safe_text(row["Views"]))
+                st.write("**Upload Date:**", safe_text(row["Upload Date"]))
+                st.write("**Duration (sec):**", safe_text(row["Duration (sec)"]))
+                st.write("**Tags:**", safe_text(row["Tags"]))
+                st.write("**URL:**", safe_text(row["URL"]))
