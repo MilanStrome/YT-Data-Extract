@@ -408,7 +408,7 @@ if df is not None and not df.empty:
     # Title + Copy button beside it
     title_col, copy_col = st.columns([6, 1])
     with title_col:
-        st.info("Click Copy, then paste into ChatGPT. It will return JSON with patterns, titles, descriptions, tags, hashtags, and a pinned comment.")
+        st.info("Click Copy, then paste into ChatGPT. It will return titles, descriptions, tags, hashtags, and a pinned comment.")
         # st.markdown("## 🤖 ChatGPT Prompt Builder")
     with copy_col:
         render_copy_button(prompt_text)
