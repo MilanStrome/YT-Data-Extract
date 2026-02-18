@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import json
+import streamlit.components.v1 as components
 
 
 # -----------------------------
@@ -32,7 +33,7 @@ body { background-color: #0d0d0d; }
 .main-title {
     font-size: 44px;
     font-weight: 900;
-    color: white;
+    color: black;
     margin-bottom: 0px;
 }
 .sub-title {
@@ -81,7 +82,7 @@ def clean_urls(text):
 
 
 # -----------------------------
-# CHATGPT PROMPT BUILDER (from extracted data)
+# CHATGPT PROMPT BUILDER
 # -----------------------------
 def build_chatgpt_prompt_from_df(
     df: pd.DataFrame,
@@ -93,64 +94,121 @@ def build_chatgpt_prompt_from_df(
     cta_type: str,
     branded_hashtags: str
 ) -> str:
+
     rows = []
     for _, r in df.iterrows():
         rows.append(
             f"- Title: {safe_text(r.get('Title'))}\n"
-            f"  Channel: {safe_text(r.get('Channel'))}\n"
             f"  Views: {safe_text(r.get('Views'))}\n"
-            f"  Upload Date: {safe_text(r.get('Upload Date'))}\n"
             f"  Duration (sec): {safe_text(r.get('Duration (sec)'))}\n"
-            f"  Tags: {safe_text(r.get('Tags'))}\n"
-            f"  URL: {safe_text(r.get('URL'))}\n"
         )
 
     competitor_block = "\n".join(rows)
 
-    bh = (branded_hashtags or "").strip()
-    if bh:
-        bh = re.sub(r"[,\n]+", " ", bh)
-        bh = " ".join([x for x in bh.split(" ") if x.strip()])
+    title_len_rule = "under 100 characters" if target_type == "Shorts" else "under 100 characters"
 
-    title_len_rule = "under 60 characters" if target_type == "Shorts" else "under 80 characters"
+    return f"""
+You are an expert YouTube {target_type} SEO strategist and brand copywriter for kids educational content.
 
-    return f"""You are a YouTube {target_type} SEO strategist and copywriter.
+Your job:
+Generate a YouTube {target_type} optimized Title, Description, Hashtags, and Tags in the SAME style as the reference example below.
 
-My content topic (what my next video is about):
+IMPORTANT RULES:
+- Identify 5 winning patterns from the competitor titles (hooks, length, punctuation, emojis, numbers, curiosity).
+- Create 5 title options optimized for {target_type}. Keep each natural and not misleading, {title_len_rule}.
+- Output must be SEO optimized but NOT spammy.
+- Use emojis naturally (2 to 5 emojis).
+- The description must feel safe, parent-trusted, and educational.
+- Always include the Subscribe link exactly:
+https://www.youtube.com/@RVAppStudios?sub_confirmation=1
+- Avoid these words: {avoid_words}
+- Must include these keywords naturally: {must_include}
+- Give 1 pinned comment idea that drives engagement.
+
+VIDEO TOPIC:
 {your_topic}
 
-Constraints:
-- Tone: {tone}
-- Must include keywords (comma list): {must_include}
-- Avoid words/phrases (comma list): {avoid_words}
-- CTA type: {cta_type}
-- Branded/campaign hashtags to include (if relevant): {bh if bh else "None"}
+TARGET AUDIENCE:
+Babies, toddlers, preschoolers (ages 2–7)
 
-Competitor reference data (extracted):
+REFERENCE STYLE (must follow):
+Title format example:
+ABC Song for Baby 🚂 | Learn Alphabet Letters & Sounds with Lucas | Fun Toddler Learning #shorts
+
+Description format example:
+🎵 Hook line with emojis
+Short paragraph explaining educational value
+Perfect for: bullet list
+Emotional trust paragraph
+Brand trust paragraph
+App promotion paragraph
+Subscribe CTA line
+Hashtags section
+
+Now generate the following exactly in this format:
+
+Title:
+(Two SEO title with important keywords)
+
+Description:
+(full description following the exact structure)
+
+Hashtags:
+(5 hashtags, must include #lucasandfriends)
+
+Tags:
+(30-40 comma-separated tags, include #shorts and lucasandfriends)
+
+Competitor video references:
 {competitor_block}
 
-Tasks:
-1) Identify 5 winning patterns from the competitor titles (hooks, length, punctuation, emojis, numbers, curiosity).
-2) Create 8 title options optimized for {target_type}. Keep each natural and not misleading, {title_len_rule}.
-3) Create 2 description options:
-   - First line must be a hook.
-   - Add 3 to 5 hashtags.
-   - Include the CTA at the end.
-4) Generate:
-   - 20 to 30 tags as comma-separated.
-   - 10 hashtags: 3 broad, 4 niche, 3 branded/campaign (include my branded ones if provided).
-5) Give 1 pinned comment idea that drives engagement.
-
-Output ONLY valid JSON in exactly this format:
-{{
-  "patterns": [...],
-  "titles": [...],
-  "descriptions": [...],
-  "tags": "...",
-  "hashtags": [...],
-  "pinned_comment": "..."
-}}
+Return ONLY in plain text with these exact headings:
+Title:
+Description:
+Hashtags:
+Tags:
 """
+
+
+def render_copy_button(prompt_text: str):
+    # JS button that copies the current prompt every rerun
+    copy_html = f"""
+    <div style="margin-top: 34px;">
+      <button id="copyBtn"
+        style="
+          width: 100%;
+          padding: 10px;
+          background-color: #ff4b4b;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-weight: bold;
+          cursor: pointer;
+        ">
+        📋 Copy
+      </button>
+      <div id="copiedMsg" style="color:#0000FF; font-size:12px; margin-top:6px; display:none;">
+        Copied!
+      </div>
+    </div>
+
+    <script>
+      const textToCopy = {json.dumps(prompt_text)};
+      const btn = document.getElementById("copyBtn");
+      const msg = document.getElementById("copiedMsg");
+
+      btn.addEventListener("click", async () => {{
+        try {{
+          await navigator.clipboard.writeText(textToCopy);
+          msg.style.display = "block";
+          setTimeout(() => msg.style.display = "none", 1500);
+        }} catch (e) {{
+          alert("Copy failed. Please copy manually from the text box.");
+        }}
+      }});
+    </script>
+    """
+    components.html(copy_html, height=95)
 
 
 # -----------------------------
@@ -209,11 +267,7 @@ def extract_video_info(url):
         "noplaylist": True,
         "geo_bypass": True,
         "nocheckcertificate": True,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android"]
-            }
-        }
+        "extractor_args": {"youtube": {"player_client": ["android"]}},
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -240,11 +294,12 @@ def extract_video_info(url):
 
 
 # -----------------------------
-# INPUT UI
+# INPUT UI (with default links)
 # -----------------------------
 text_input = st.text_area(
     "📌 Paste multiple YouTube URLs (one per line)",
     height=200,
+    value="https://www.youtube.com/watch?v=9_WBQISVHnw\nhttps://www.youtube.com/shorts/ZzbDlLQwzFc",
     placeholder="https://www.youtube.com/watch?v=xxxx\nhttps://youtu.be/yyyy"
 )
 
@@ -294,29 +349,37 @@ if extract_btn:
 
             progress.progress((i + 1) / len(urls))
 
-        df = pd.DataFrame(results)
-        df["Upload Date"] = df["Upload Date"].apply(format_date)
-        st.session_state.df = df
+        df_new = pd.DataFrame(results)
+        df_new["Upload Date"] = df_new["Upload Date"].apply(format_date)
+        st.session_state.df = df_new
 
         st.success("✅ Extraction complete!")
 
 
 # -----------------------------
-# RENDER RESULTS (persist across reruns)
+# RENDER RESULTS
 # -----------------------------
 df = st.session_state.df
 
 if df is not None and not df.empty:
-    # Data table
     st.markdown("## 📊 Extracted Data")
     st.dataframe(df, width="stretch")
 
-    # Prompt builder
+    # CSV download
+    csv = df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        "⬇️ Download CSV",
+        data=csv,
+        file_name="youtube_metadata.csv",
+        mime="text/csv"
+    )
+
     st.markdown("## 🤖 ChatGPT Prompt Builder")
 
+    # Inputs that affect prompt (these rerun and update prompt)
     c1, c2, c3 = st.columns([2, 1, 1])
     with c1:
-        your_topic = st.text_input("Your next video topic (1 line)", value="Write your next video idea here")
+        your_topic = st.text_input("Your next video topic (1 line)", value="baby first words learning video")
     with c2:
         target_type = st.selectbox("Target type", ["Shorts", "Videos"], index=0)
     with c3:
@@ -324,12 +387,13 @@ if df is not None and not df.empty:
 
     c4, c5 = st.columns(2)
     with c4:
-        must_include = st.text_input("Must include keywords (comma-separated)", value="wooden toy, Montessori, toddler")
+        must_include = st.text_input("Must include keywords (comma-separated)", value="baby, Montessori, toddler")
         branded_hashtags = st.text_input("Branded/campaign hashtags (comma or space)", value="#lucasandfriends")
     with c5:
-        avoid_words = st.text_input("Avoid words (comma-separated)", value="cheap, discount")
-        cta_type = st.selectbox("CTA type", ["Follow", "Shop", "Comment", "Save", "Share"], index=2)
+        avoid_words = st.text_input("Avoid words (comma-separated)", value="any brand/company name")
+        cta_type = st.selectbox("CTA type", ["Follow", "Shop", "Comment", "Save", "Share"], index=0)
 
+    # Build prompt (always fresh)
     prompt_text = build_chatgpt_prompt_from_df(
         df=df,
         your_topic=your_topic,
@@ -341,17 +405,19 @@ if df is not None and not df.empty:
         branded_hashtags=branded_hashtags
     )
 
-    st.info("Copy the prompt below and paste into ChatGPT. It will return JSON with patterns, titles, descriptions, tags, hashtags, and a pinned comment.")
-    st.text_area("ChatGPT Prompt", prompt_text, height=420)
+    # Title + Copy button beside it
+    title_col, copy_col = st.columns([6, 1])
+    with title_col:
+        st.info("Click Copy, then paste into ChatGPT. It will return JSON with patterns, titles, descriptions, tags, hashtags, and a pinned comment.")
+        # st.markdown("## 🤖 ChatGPT Prompt Builder")
+    with copy_col:
+        render_copy_button(prompt_text)
 
-    # CSV download
-    csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        "⬇️ Download CSV",
-        data=csv,
-        file_name="youtube_metadata.csv",
-        mime="text/csv"
-    )
+    # st.info("Click Copy, then paste into ChatGPT. It will return JSON with patterns, titles, descriptions, tags, hashtags, and a pinned comment.")
+
+    # IMPORTANT: no key here, so it updates whenever prompt_text changes
+    st.text_area("ChatGPT Prompt", value=prompt_text, height=420)
+
 
     # Preview cards
     st.markdown("## 🎞️ Preview Cards")
