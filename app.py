@@ -98,7 +98,10 @@ def build_chatgpt_prompt_from_df(
     rows = []
     for _, r in df.iterrows():
         rows.append(
+            f"- URL: {safe_text(r.get('URL'))}\n"
             f"- Title: {safe_text(r.get('Title'))}\n"
+            f"- Description: {safe_text(r.get('Description'))}\n"
+            f"- Tags: {safe_text(r.get('Tags'))}\n"
             f"  Views: {safe_text(r.get('Views'))}\n"
             f"  Duration (sec): {safe_text(r.get('Duration (sec)'))}\n"
         )
