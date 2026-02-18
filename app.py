@@ -49,7 +49,7 @@ body { background-color: #0d0d0d; }
 # -----------------------------
 # HEADER
 # -----------------------------
-st.markdown("<div class='main-title'>🎬 YouTube Metadata Extractor</div>", unsafe_allow_html=True)
+st.markdown("<div class='main-title'>🎬 YouTube Metadata Extractor & Prompt Generator</div>", unsafe_allow_html=True)
 st.markdown(
     "<div class='sub-title'>Streamlit Cloud Ready · No API · Extract title, description, thumbnail + attempt tags</div>",
     unsafe_allow_html=True
