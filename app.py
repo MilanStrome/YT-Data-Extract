@@ -454,7 +454,7 @@ st.text("")
 st.text("")
 st.text("")
 st.markdown("---")
-st.markdown("**✶ Built like a weapon, use like a tool. ✶**")
+st.markdown("**✶ Built like a tool, use like a weapon. ✶**")
 # st.text("- by Ex-Code Warrior Ⓜ")
 st.markdown("---")
 
